@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GLOBE: Ground Truth</title>
+<title>Ground Truth: GLOBE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Spectral:wght@300;400;600&display=swap" rel="stylesheet">
@@ -20,6 +20,9 @@
      these are readings, not warnings. */
   --o1:#f2d8a8; --o2:#e0ab63; --o3:#c97c3c; --o4:#a9502a; --o5:#7a4420;
   --pin:#e3b34f;
+  /* ERA5 reads red, GLOBE reads blue: the observations already carry the
+     blue choropleth, so the model gets the opposite end of the palette. */
+  --e1:#f7e2dc; --e2:#e9b7a9; --e3:#d4826f; --e4:#ae4f3b; --e5:#7d2b1f;
   --nodata:#e9e3d6;
 }
 *{box-sizing:border-box}
@@ -181,11 +184,11 @@ a:hover{border-bottom-color:var(--accent)}
 .blend input[type=range]{-webkit-appearance:none;appearance:none;
   background:transparent;height:20px;accent-color:auto}
 .blend input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;
-  background:linear-gradient(to right,var(--o4) 0%,var(--o1) 42%,
-    var(--i1) 58%,var(--i5) 100%)}
+  background:linear-gradient(to right,var(--i5) 0%,var(--i1) 42%,
+    var(--e1) 58%,var(--e5) 100%)}
 .blend input[type=range]::-moz-range-track{height:3px;border-radius:2px;
-  background:linear-gradient(to right,var(--o4) 0%,var(--o1) 42%,
-    var(--i1) 58%,var(--i5) 100%)}
+  background:linear-gradient(to right,var(--i5) 0%,var(--i1) 42%,
+    var(--e1) 58%,var(--e5) 100%)}
 .blend input[type=range]::-moz-range-progress{background:transparent;height:3px}
 .blend input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   width:16px;height:16px;border-radius:50%;background:var(--paper2);
@@ -198,7 +201,7 @@ a:hover{border-bottom-color:var(--accent)}
 .blend input[type=range]:active::-moz-range-thumb{cursor:grabbing}
 .blend .end{font:600 10px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.12em;
   text-transform:uppercase;white-space:nowrap;transition:opacity .25s}
-.blend .end.a{color:var(--o4)} .blend .end.b{color:var(--i5)}
+.blend .end.a{color:var(--i5)} .blend .end.b{color:var(--e5)}
 .srcbar{display:flex;flex-wrap:wrap;gap:9px 26px;align-items:flex-start;margin-top:13px;
   padding-top:12px;border-top:1px solid var(--rule2)}
 .src{display:flex;align-items:flex-start;gap:9px;
@@ -206,8 +209,8 @@ a:hover{border-bottom-color:var(--accent)}
 .src .sw{width:15px;height:15px;flex:none;margin-top:3px;border:1px solid rgba(0,0,0,.22)}
 .src .sw.dot{border-radius:50%;background:var(--pin);border-color:#fffaf0;
   box-shadow:0 0 0 1px rgba(0,0,0,.18)}
-.src .sw.sq{background:var(--i3);border-color:var(--i5)}
-.src .sw.off{background:transparent;border:1px dashed var(--i3)}
+.src .sw.sq{background:var(--e3);border-color:var(--e5)}
+.src .sw.off{background:transparent;border:1px dashed var(--e3)}
 .src b{display:block;font:600 10px/1.6 ui-sans-serif,system-ui,sans-serif;
   letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
 .totop{position:fixed;right:22px;bottom:22px;z-index:1200;width:44px;height:44px;
@@ -240,7 +243,7 @@ a:hover{border-bottom-color:var(--accent)}
 <body>
 
 <div class="topbar" id="topbar"><div class="inner">
-  <div class="brand" id="brand">GLOBE: Ground <em>Truth</em></div>
+  <div class="brand" id="brand">Ground <em>Truth</em>: GLOBE</div>
   <nav>
     <a href="https://www.globe.gov/" target="_blank" rel="noopener">GLOBE</a>
     <a href="https://geoemerge.com/" target="_blank" rel="noopener">UF EMERGE</a>
@@ -252,7 +255,7 @@ a:hover{border-bottom-color:var(--accent)}
 <div class="wrap"><div class="mast">
   <p class="over">CityCamp Gainesville Hack Day &middot; NASA GLOBE Environmental Data</p>
   <div class="rule"></div>
-  <h1>GLOBE: Ground <em>Truth</em></h1>
+  <h1>Ground <em>Truth</em>: GLOBE</h1>
   <p class="dek">NASA's <a href="https://www.globe.gov/" target="_blank" rel="noopener">GLOBE Observer program</a> asks volunteers and researchers to measure the world
   around them, and uses what they record to check what satellites and climate models
   say. Here is how it works, and where the gaps are.</p>
@@ -532,6 +535,7 @@ const WHAT={sky_conditions:"Cloud, contrails and haze. Only cloud has an ERA5 ma
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const I_RAMP=["--i1","--i2","--i3","--i4","--i5"].map(css);
 const O_RAMP=["--o1","--o2","--o3","--o4","--o5"].map(css);
+const E_RAMP=["--e1","--e2","--e3","--e4","--e5"].map(css);
 const NODATA=css("--nodata"), ACCENT=css("--accent"), PIN=css("--pin");
 const j=p=>fetch(p).then(r=>r.json());
 
@@ -605,15 +609,15 @@ function drawGrid(){
   const lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals);
   const col=v=>{ if(v===null||v===undefined) return null;
     const t=hi>lo?(v-lo)/(hi-lo):0.5;
-    return I_RAMP[Math.min(I_RAMP.length-1,Math.floor(t*I_RAMP.length))]; };
+    return E_RAMP[Math.min(E_RAMP.length-1,Math.floor(t*E_RAMP.length))]; };
 
   if(gridLayer) gridLayer.remove();
   gridLayer=L.featureGroup(GRID.cells.map(c=>{
     const v=val(c), fill=col(v), b=c[year]||c.all;
     const r=L.rectangle([[c.lat-half,c.lon-half],[c.lat+half,c.lon+half]],{
-      renderer:gridRenderer, color:fill?"#33436e":"#8695b7", weight:.6,
+      renderer:gridRenderer, color:fill?"#6d2418":"#c79a8f", weight:.6,
       dashArray:fill?null:"3 3", fill:!!fill,
-      fillColor:fill||"#8695b7", fillOpacity:fill?.75:0});
+      fillColor:fill||"#c79a8f", fillOpacity:fill?.75:0});
     r.bindPopup("<b>One ERA5 square</b><br><span style='font-size:13px;color:#5a5148'>"
       +"0.25&deg; &mdash; about 30 km across</span><dl>"
       +(spec
@@ -812,9 +816,9 @@ function cloud(cc){
   const ks=order.filter(k=>cc.by_category[k]);
   new Chart(document.getElementById("cloudChart"),{type:"bar",
     data:{labels:ks,datasets:[
-      {label:"what people saw",data:ks.map(k=>MID[k]),backgroundColor:"#a9502a"},
+      {label:"what people saw",data:ks.map(k=>MID[k]),backgroundColor:"#5a6b95"},
       {label:"what ERA5 said",data:ks.map(k=>cc.by_category[k].era5_mean),
-       backgroundColor:"#8695b7"}]},
+       backgroundColor:"#ae4f3b"}]},
     options:{maintainAspectRatio:false,
       plugins:{legend:{position:"top",labels:{color:"#5a5148",boxWidth:12,
         font:{family:"Spectral,Georgia,serif",size:12}}},
@@ -847,7 +851,10 @@ function excluded(){
 Promise.all([j("data/summary.json"),j("data/observers.json"),j("data/counties.geojson")])
 .then(([s,o,g])=>{
   SUM=s;OBS=o;GEO=g; cards();minis();excluded();
-  map=L.map("map",{scrollWheelZoom:false}).setView([28.2,-82.6],6);
+  // zoomSnap lets fitBounds land between whole zoom levels, so the state fills
+  // the pane instead of dropping a level and leaving a margin all round.
+  map=L.map("map",{scrollWheelZoom:false,zoomSnap:0.25,zoomDelta:0.5});
+  map.fitBounds([[24.4,-87.7],[31.1,-80.0]],{padding:[10,10]});
   // Esri's light canvas needs no API key; CARTO's tiles now do.
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/"+
     "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",

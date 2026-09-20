@@ -1,6 +1,6 @@
 # groundtruth-site
 
-**GLOBE: Ground Truth — an educational brief on NASA's GLOBE Observer programme, with Florida
+**Ground Truth: GLOBE — an educational brief on NASA's GLOBE Observer programme, with Florida
 as the worked example.**
 
 🔗 **Live:** <https://quantumrac.github.io/globe-ground-truth/>
