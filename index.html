@@ -178,6 +178,24 @@ a:hover{border-bottom-color:var(--accent)}
   .topbar nav a{font-size:9px;letter-spacing:.06em}}
 
 .blend{display:flex;align-items:center;gap:11px;min-width:250px}
+.blend input[type=range]{-webkit-appearance:none;appearance:none;
+  background:transparent;height:20px;accent-color:auto}
+.blend input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--o4) 0%,var(--o1) 42%,
+    var(--i1) 58%,var(--i5) 100%)}
+.blend input[type=range]::-moz-range-track{height:3px;border-radius:2px;
+  background:linear-gradient(to right,var(--o4) 0%,var(--o1) 42%,
+    var(--i1) 58%,var(--i5) 100%)}
+.blend input[type=range]::-moz-range-progress{background:transparent;height:3px}
+.blend input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:16px;height:16px;border-radius:50%;background:var(--paper2);
+  border:2px solid var(--ink);margin-top:-6.5px;cursor:grab;
+  box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.blend input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;
+  background:var(--paper2);border:2px solid var(--ink);cursor:grab;
+  box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.blend input[type=range]:active::-webkit-slider-thumb{cursor:grabbing}
+.blend input[type=range]:active::-moz-range-thumb{cursor:grabbing}
 .blend .end{font:600 10px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.12em;
   text-transform:uppercase;white-space:nowrap;transition:opacity .25s}
 .blend .end.a{color:var(--o4)} .blend .end.b{color:var(--i5)}
@@ -609,12 +627,12 @@ function drawGrid(){
 function applyBlend(){
   const t=blend/100;
   const gp=map.getPane("era5"), dp=map.getPane("dots");
+  // Each end means that layer on its own, at full strength.
   if(gp) gp.style.opacity=t;
-  // The dots never disappear: the point is to hold both in view at once.
-  if(dp) dp.style.opacity=1-0.6*t;
+  if(dp) dp.style.opacity=1-t;
   const eg=document.getElementById("endGlobe"), ee=document.getElementById("endEra5");
-  if(eg) eg.style.opacity=(1-0.55*t).toFixed(2);
-  if(ee) ee.style.opacity=(0.45+0.55*t).toFixed(2);
+  if(eg) eg.style.opacity=(0.3+0.7*(1-t)).toFixed(2);
+  if(ee) ee.style.opacity=(0.3+0.7*t).toFixed(2);
 }
 
 function sources(){
