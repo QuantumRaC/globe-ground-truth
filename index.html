@@ -135,7 +135,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .chartbox{background:var(--paper2);border:1px solid var(--rule2);padding:18px;height:300px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center}
 .two>*{min-width:0}
-canvas{max-width:100%}
+/* Scoped to the chart on purpose. As a bare `canvas` rule this also hit
+   Leaflet's canvas renderer, whose parent pane has no width, clamping the
+   observation layer to zero and making every dot vanish. */
+.chartbox canvas{max-width:100%}
 .pull{border-left:2px solid var(--accent);padding:3px 0 3px 18px;margin:24px auto;
   max-width:62ch;font:300 17px/1.62 Spectral,Georgia,serif;color:var(--ink2)}
 .pull b{color:var(--ink);font-weight:600}
@@ -639,9 +642,16 @@ function drawGrid(){
 function applyBlend(){
   const t=blend/100;
   const gp=map.getPane("era5"), dp=map.getPane("dots");
-  // Each end means that layer on its own, at full strength.
-  if(gp) gp.style.opacity=t;
-  if(dp) dp.style.opacity=1-t;
+  if(gp){
+    gp.style.opacity=t;
+    // An element at opacity 0 still swallows the pointer, which would kill the
+    // hover on the dots underneath. Hand the pointer to whichever layer is
+    // actually the one being looked at.
+    gp.style.pointerEvents = t>0.5 ? "auto" : "none";
+  }
+  // The observations recede as the model comes up, but never below a third:
+  // leaving them at zero is how they came to look missing entirely.
+  if(dp) dp.style.opacity=1-0.66*t;
   const eg=document.getElementById("endGlobe"), ee=document.getElementById("endEra5");
   if(eg) eg.style.opacity=(0.3+0.7*(1-t)).toFixed(2);
   if(ee) ee.style.opacity=(0.3+0.7*t).toFixed(2);
@@ -714,6 +724,7 @@ function draw(){
       hoverT=setTimeout(()=>dotPop.setLatLng(e.layer.getLatLng())
         .setContent(popup(active,e.layer._rec)).openOn(map),DWELL); });
     dots.on("mouseout",()=>{ clearTimeout(hoverT); map.closePopup(dotPop); });
+    pane.style.opacity=1;
     applyBlend();
   },170);
 
@@ -794,7 +805,10 @@ function startAuto(){
 function stopAuto(){
   running=false; token++; cyc().classList.remove("on");
 }
-function nudge(){ stopAuto(); clearTimeout(idleT); idleT=setTimeout(startAuto,20000); }
+function nudge(){
+  stopAuto();
+  clearTimeout(idleT); idleT=setTimeout(startAuto,20000);
+}
 
 function controls(){
   document.getElementById("tabs").innerHTML=P.map(p=>
@@ -928,10 +942,11 @@ Promise.all([j("data/summary.json"),j("data/observers.json"),j("data/counties.ge
     {attribution:"Esri, HERE, Garmin, &copy; OpenStreetMap contributors",
      maxZoom:12}).addTo(map);
   // Dots live in their own pane so the whole set can cross-fade on a change.
-  // ERA5 squares sit above the counties and below the observations.
-  map.createPane("era5"); map.getPane("era5").style.zIndex=550;
+  // The ERA5 field draws over the observations, so sliding it up genuinely
+  // covers them rather than sitting behind them.
+  map.createPane("dots"); map.getPane("dots").style.zIndex=550;
+  map.createPane("era5"); map.getPane("era5").style.zIndex=650;
   gridRenderer=L.svg({pane:"era5"});
-  map.createPane("dots"); map.getPane("dots").style.zIndex=650;
   // Canvas, not SVG: thousands of dots as DOM nodes cost most of a second to
   // build on every switch. Canvas draws them with no nodes at all, and Leaflet
   // still hit-tests them for hover.
