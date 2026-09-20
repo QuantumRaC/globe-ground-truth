@@ -565,6 +565,7 @@ const VALUE={
 
 let SUM,OBS,GEO,PTS={},active=P[0],year="all",mode="intensity",map,layer,dots;
 let dotRenderer,dotTimer,years=[],GRID=null,gridLayer,gridRenderer,blend=0;
+const dotPop=L.popup({closeButton:false,autoPan:false});
 // Which ERA5 variable, if any, corresponds to each GLOBE measurement.
 const ERA5_VAR={sky_conditions:["cloud","cloud cover","%"],
   land_covers:["soil","soil moisture","m\u00b3/m\u00b3"],
@@ -688,6 +689,10 @@ function draw(){
   dotTimer=setTimeout(()=>{
     if(dots) dots.remove();
     // Same marker in both views -- only the fill changes -- and no stroke.
+    // Nothing is bound per marker: building a popup and two listeners for each
+    // of six thousand dots cost most of a second on every switch, which starved
+    // the animation of frames. One shared popup and one pair of group
+    // listeners do the same job.
     dots=L.featureGroup(show.map(d=>{
       // A hairline in near-white separates the dot from whatever is under it;
       // without it the gold sat too close to the blue counties.
@@ -695,7 +700,13 @@ function draw(){
         color:"#fffaf0",weight:.7,opacity:.95,
         fillColor:valueMode?colorOf(active,d):PIN,
         fillOpacity:valueMode?.95:.9});
-      m.bindPopup(popup(active,d)); onHover(m); return m;})).addTo(map);
+      m._rec=d; return m;})).addTo(map);
+
+    let hoverT=null;
+    dots.on("mouseover",e=>{ clearTimeout(hoverT);
+      hoverT=setTimeout(()=>dotPop.setLatLng(e.layer.getLatLng())
+        .setContent(popup(active,e.layer._rec)).openOn(map),DWELL); });
+    dots.on("mouseout",()=>{ clearTimeout(hoverT); map.closePopup(dotPop); });
     applyBlend();
   },170);
 
@@ -717,19 +728,66 @@ function draw(){
     : `Counties shaded by how many observations they hold. Unshaded counties have none.`;
 }
 
-/* ---- auto-cycle: runs on load, pauses while the map area is in use ---- */
-let autoT=null, idleT=null;
+/* ---- the demo loop -------------------------------------------------------
+   Left alone, the map walks through the four measurements and, for each one,
+   sweeps the GLOBE/ERA5 slider from end to end so both layers are shown
+   without anyone touching anything. Moving the mouse does not stop it --
+   people need to be able to read the page while it plays -- but any click,
+   drag or keypress hands control over.                                      */
+let idleT=null, running=false, token=0, sweepId=0;
 const cyc=()=>document.getElementById("cyc");
+
 function setActive(p){
   active=p;
   document.querySelectorAll("#tabs button").forEach(o=>
     o.setAttribute("aria-selected",o.dataset.p===active));
   draw();
 }
-function startAuto(){ if(autoT) return; cyc().classList.add("on");
-  autoT=setInterval(()=>setActive(P[(P.indexOf(active)+1)%P.length]),4500); }
-function stopAuto(){ clearInterval(autoT); autoT=null; cyc().classList.remove("on"); }
-function nudge(){ stopAuto(); clearTimeout(idleT); idleT=setTimeout(startAuto,15000); }
+
+function setBlend(v){
+  blend=Math.max(0,Math.min(100,v));
+  const bl=document.getElementById("blend");
+  if(bl) bl.value=blend;
+  applyBlend();
+}
+
+// Programmatic sweep. Eased so it reads as a hand moving the control.
+function sweep(to,ms,then){
+  // Each sweep takes its own id. Only the newest one is allowed to write to
+  // blend, so two overlapping chains can never fight over the same value.
+  const from=blend, t0=performance.now(), mine=token, id=++sweepId;
+  (function step(now){
+    if(mine!==token || id!==sweepId) return;
+    const k=Math.min(1,(now-t0)/ms);
+    const e=k<0.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;
+    setBlend(from+(to-from)*e);
+    if(k<1) requestAnimationFrame(step); else if(then) then();
+  })(t0);
+}
+
+function after(ms,fn){ const mine=token; setTimeout(()=>{ if(mine===token) fn(); },ms); }
+
+function loop(){
+  const mine=token;
+  after(1100,()=>sweep(100,2400,()=>          // show the model creep in
+    after(1500,()=>sweep(0,1900,()=>          // and pull back to the people
+      after(800,()=>{ if(mine!==token) return;
+        setActive(P[(P.indexOf(active)+1)%P.length]);
+        after(700,loop);
+      })))));
+}
+
+function startAuto(){
+  // Always a clean restart: bumping the token retires any chain still in
+  // flight, rather than letting a second one start alongside it.
+  token++; sweepId++;
+  running=true; cyc().classList.add("on");
+  loop();
+}
+function stopAuto(){
+  running=false; token++; cyc().classList.remove("on");
+}
+function nudge(){ stopAuto(); clearTimeout(idleT); idleT=setTimeout(startAuto,20000); }
 
 function controls(){
   document.getElementById("tabs").innerHTML=P.map(p=>
@@ -767,7 +825,9 @@ function controls(){
   bl.oninput=()=>{blend=+bl.value; applyBlend();};
 
   const stage=document.getElementById("stage");
-  ["pointerdown","pointermove","wheel","input","focusin"].forEach(e=>
+  // Deliberately not pointermove or wheel: reading the page, or scrolling
+  // past it, should not stop the demo. Only a real interaction does.
+  ["pointerdown","input","keydown"].forEach(e=>
     stage.addEventListener(e,nudge,{passive:true}));
 }
 
@@ -854,7 +914,8 @@ Promise.all([j("data/summary.json"),j("data/observers.json"),j("data/counties.ge
   // zoomSnap lets fitBounds land between whole zoom levels, so the state fills
   // the pane instead of dropping a level and leaving a margin all round.
   map=L.map("map",{scrollWheelZoom:false,zoomSnap:0.25,zoomDelta:0.5});
-  map.fitBounds([[24.4,-87.7],[31.1,-80.0]],{padding:[10,10]});
+  map.fitBounds([[24.4,-87.7],[31.1,-80.0]],{padding:[0,0]});
+  map.setZoom(map.getZoom()+0.25);
   // Esri's light canvas needs no API key; CARTO's tiles now do.
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/"+
     "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
@@ -865,7 +926,10 @@ Promise.all([j("data/summary.json"),j("data/observers.json"),j("data/counties.ge
   map.createPane("era5"); map.getPane("era5").style.zIndex=550;
   gridRenderer=L.svg({pane:"era5"});
   map.createPane("dots"); map.getPane("dots").style.zIndex=650;
-  dotRenderer=L.svg({pane:"dots"});
+  // Canvas, not SVG: thousands of dots as DOM nodes cost most of a second to
+  // build on every switch. Canvas draws them with no nodes at all, and Leaflet
+  // still hit-tests them for hover.
+  dotRenderer=L.canvas({pane:"dots"});
   controls();
   // Leaflet injects its attribution links after the fact; catch those too so
   // nothing navigates away from the page.
