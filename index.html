@@ -312,10 +312,17 @@ a:hover{border-bottom-color:var(--accent)}
   <p><b>Which is why these readings are used to check the instruments, rather than the
   other way round.</b></p>
 </div>
-  <div class="pull">The map above shows four GLOBE measurements across Florida.
+  <div class="pull"><b>Why these four.</b> They span the whole range of what a
+  model can do: ERA5 reproduces cloud cover directly, approximates ground wetness,
+  and has no variable at all for tree height or mosquito habitat. They are also the
+  four with real breadth behind them &mdash; several Florida measurements have far
+  more records but turn out to come from automated stations, or from one very
+  dedicated volunteer.</div>
+
+  <div class="pull">The map above shows those four measurements across Florida.
   <b>Intensity</b> shades each county by how many observations it holds.
-  <b>Observations</b> colours each reading by what it actually recorded. Hover on one to see the record a volunteer
-  filed.</div>
+  <b>Observations</b> colours each reading by what it actually recorded. Hover on one
+  to see the record a volunteer filed.</div>
 </div></section>
 
 <section id="cloud-section"><div class="wrap"><div class="sec-head">
@@ -915,7 +922,6 @@ Promise.all([j("data/summary.json"),j("data/observers.json"),j("data/counties.ge
   // the pane instead of dropping a level and leaving a margin all round.
   map=L.map("map",{scrollWheelZoom:false,zoomSnap:0.25,zoomDelta:0.5});
   map.fitBounds([[24.4,-87.7],[31.1,-80.0]],{padding:[0,0]});
-  map.setZoom(map.getZoom()+0.25);
   // Esri's light canvas needs no API key; CARTO's tiles now do.
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/"+
     "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
