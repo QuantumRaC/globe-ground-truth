@@ -1,0 +1,90 @@
+{
+  "sky_conditions": {
+    "records": 11273,
+    "mapped_to_county": 11207,
+    "outside_area": 66,
+    "missing_coords": 0,
+    "sites": 1816,
+    "observers": 860,
+    "top_observer_share": 4.5,
+    "counties_with_data": 46,
+    "per_year": {
+      "2024": 6537,
+      "2025": 3513,
+      "2026": 1223
+    },
+    "satellite_visibility": "direct",
+    "satellite_note": "ERA5 cloud_cover, same hour"
+  },
+  "tree_heights": {
+    "records": 1813,
+    "mapped_to_county": 1799,
+    "outside_area": 14,
+    "missing_coords": 0,
+    "sites": 724,
+    "observers": 314,
+    "top_observer_share": 12.5,
+    "counties_with_data": 41,
+    "per_year": {
+      "2019": 317,
+      "2020": 120,
+      "2021": 359,
+      "2022": 531,
+      "2023": 210,
+      "2024": 155,
+      "2025": 90,
+      "2026": 31
+    },
+    "satellite_visibility": "none",
+    "satellite_note": "no canopy variable in ERA5"
+  },
+  "land_covers": {
+    "records": 808,
+    "mapped_to_county": 798,
+    "outside_area": 10,
+    "missing_coords": 0,
+    "sites": 709,
+    "observers": 148,
+    "top_observer_share": 6.4,
+    "counties_with_data": 35,
+    "per_year": {
+      "2015": 3,
+      "2017": 5,
+      "2018": 2,
+      "2019": 38,
+      "2020": 133,
+      "2021": 43,
+      "2022": 159,
+      "2023": 89,
+      "2024": 49,
+      "2025": 164,
+      "2026": 123
+    },
+    "satellite_visibility": "analogy",
+    "satellite_note": "ERA5 models soil moisture, never observes a puddle"
+  },
+  "mosquito_habitat_mapper": {
+    "records": 634,
+    "mapped_to_county": 634,
+    "outside_area": 0,
+    "missing_coords": 0,
+    "sites": 277,
+    "observers": 73,
+    "top_observer_share": 17.4,
+    "counties_with_data": 23,
+    "per_year": {
+      "2017": 8,
+      "2018": 7,
+      "2019": 249,
+      "2020": 111,
+      "2021": 132,
+      "2022": 50,
+      "2023": 17,
+      "2024": 52,
+      "2025": 5,
+      "2026": 3
+    },
+    "satellite_visibility": "none",
+    "satellite_note": "invisible to remote sensing"
+  }
+}

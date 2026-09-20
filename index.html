@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLOBE: Ground Truth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Spectral:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --paper:#f6f2e9; --paper2:#fbf9f4; --ink:#1f1b16; --ink2:#5a5148;
+  --rule:#cfc6b4; --rule2:#e3dccc;
+  --accent:#7d2b1f; --gold:#a8812c; --sky:#5a6b95;
+  --i1:#dfe3ec; --i2:#b6c0d6; --i3:#8695b7; --i4:#5a6b95; --i5:#33436e;
+  /* Warm ramp for observation values: sand to umber. Deliberately not red --
+     these are readings, not warnings. */
+  --o1:#f2d8a8; --o2:#e0ab63; --o3:#c97c3c; --o4:#a9502a; --o5:#7a4420;
+  --pin:#e3b34f;
+  --nodata:#e9e3d6;
+}
+*{box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:400 17px/1.7 Spectral,Georgia,serif}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.narrow{max-width:660px;margin:0 auto}
+
+.mast{text-align:center;padding:58px 0 30px}
+.mast .over{font:600 11px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.32em;
+  text-transform:uppercase;color:var(--accent)}
+.mast .rule{width:74px;height:1px;background:var(--rule);margin:20px auto}
+h1{font:600 clamp(36px,6.2vw,74px)/1.02 "Cormorant Garamond",Georgia,serif;
+  margin:0;letter-spacing:-.015em}
+h1 em{font-style:italic;color:var(--accent)}
+.dek{font:300 20px/1.6 Spectral,Georgia,serif;color:var(--ink2);
+  max-width:52ch;margin:22px auto 0}
+
+.stage{border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);
+  background:var(--paper2);padding:26px 0 30px}
+.bar{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;
+  justify-content:space-between;margin:0 0 16px}
+.field{display:flex;flex-direction:column;gap:7px}
+.field>span{font:600 10px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.cyc{display:none;align-items:center;gap:5px;color:var(--accent);letter-spacing:.1em}
+.cyc.on{display:inline-flex}
+.cyc b{width:6px;height:6px;border-radius:50%;background:var(--accent);
+  animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.tabs,.modes{display:flex;flex-wrap:wrap;border:1px solid var(--rule)}
+.tabs button,.modes button{background:transparent;border:0;
+  border-right:1px solid var(--rule2);cursor:pointer;color:var(--ink2)}
+.tabs button{padding:9px 17px;font:400 14px/1 Spectral,Georgia,serif}
+.modes button{padding:9px 16px;font:600 10px/1 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.14em;text-transform:uppercase}
+.tabs button:last-child,.modes button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper2);font-weight:600}
+.modes button[aria-selected="true"][data-m="intensity"]{background:var(--i4);color:#fff}
+.modes button[aria-selected="true"][data-m="values"]{background:var(--o4);color:#fff}
+.yearwrap{display:flex;align-items:center;gap:12px;min-width:240px}
+input[type=range]{flex:1;accent-color:var(--accent)}
+.yr{font:600 15px/1 ui-sans-serif,system-ui,sans-serif;min-width:42px;
+  font-variant-numeric:tabular-nums}
+#map{height:600px;border:1px solid var(--rule);background:#eee}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;margin-top:14px;
+  font:400 13px/1.5 Spectral,Georgia,serif;color:var(--ink2)}
+.legend i{width:15px;height:11px;display:inline-block;margin-right:6px;
+  border:1px solid rgba(0,0,0,.14)}
+.legend .dot{width:11px;height:11px;border-radius:50%;border:1px solid rgba(0,0,0,.35)}
+.hatch{background-image:repeating-linear-gradient(45deg,#d8cfbc 0 3px,#eee7d8 3px 6px)}
+.caption{font:italic 400 14px/1.6 Spectral,Georgia,serif;color:var(--ink2);
+  margin:12px 0 0;max-width:80ch}
+
+section{padding:58px 0;border-bottom:1px solid var(--rule2)}
+.sec-head{text-align:center;margin:0 0 30px}
+.sec-head .num{font:600 11px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.3em;
+  color:var(--accent);display:block;margin-bottom:12px}
+h2{font:600 clamp(28px,3.6vw,42px)/1.14 "Cormorant Garamond",Georgia,serif;
+  margin:0;letter-spacing:-.01em}
+h3.sub{font:600 12.5px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink2);margin:32px 0 12px;
+  padding-bottom:8px;border-bottom:1px solid var(--rule2)}
+.lede{font:300 18px/1.7 Spectral,Georgia,serif;color:var(--ink2);
+  max-width:58ch;margin:14px auto 0}
+.body p{max-width:64ch;margin:0 auto 18px}
+.drop::first-letter{float:left;font:600 58px/.82 "Cormorant Garamond",Georgia,serif;
+  margin:5px 10px 0 0;color:var(--accent)}
+
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule2);
+  border:1px solid var(--rule2)}
+.card{background:var(--paper2);padding:20px 16px;text-align:center}
+.card .tag{font:600 9.5px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.14em;
+  text-transform:uppercase;display:inline-block;padding:3px 8px;border-radius:2px}
+.t-direct{background:#dfe3ec;color:#33436e}
+.t-analogy{background:#f4e6c8;color:#7a5b16}
+.t-none{background:#f0dcd6;color:var(--accent)}
+.card h3{font:500 20px/1.2 "Cormorant Garamond",Georgia,serif;margin:11px 0 6px}
+.card .big{font:600 44px/1 "Cormorant Garamond",Georgia,serif;letter-spacing:-.02em}
+.card .unit{font:600 9.5px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink2);margin-top:6px}
+.card .cap{font:italic 400 13px/1.5 Spectral,Georgia,serif;color:var(--ink2);
+  margin-top:10px;min-height:3.4em}
+
+svg.mini{width:100%;height:auto;display:block}
+.mini-lab{text-align:center;margin-top:9px}
+.mini-lab b{font:600 26px/1 "Cormorant Garamond",Georgia,serif}
+.mini-lab span{display:block;font:600 9.5px/1.5 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);margin-top:4px}
+
+.figure{background:var(--paper2);border:1px solid var(--rule2);padding:22px 20px;
+  margin:26px auto;max-width:860px}
+.figure svg{width:100%;height:auto;display:block}
+.figure figcaption{font:italic 400 13.5px/1.6 Spectral,Georgia,serif;
+  color:var(--ink2);margin-top:14px;text-align:center}
+.fig-t{font:600 10px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.16em;
+  text-transform:uppercase;fill:#5a5148}
+.fig-n{font:600 13px/1 ui-sans-serif,system-ui,sans-serif;fill:#1f1b16}
+.fig-s{font:400 12.5px/1 Spectral,Georgia,serif;fill:#5a5148}
+
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;min-width:420px;border-collapse:collapse;
+  font:400 14.5px/1.5 Spectral,Georgia,serif}
+th{font:600 9.5px/1.4 ui-sans-serif,system-ui,sans-serif;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink2);text-align:left;padding:9px 12px;
+  border-bottom:1px solid var(--ink)}
+td{padding:9px 12px;border-bottom:1px solid var(--rule2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.chartbox{background:var(--paper2);border:1px solid var(--rule2);padding:18px;height:300px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center}
+.two>*{min-width:0}
+canvas{max-width:100%}
+.pull{border-left:2px solid var(--accent);padding:3px 0 3px 18px;margin:24px auto;
+  max-width:62ch;font:300 17px/1.62 Spectral,Georgia,serif;color:var(--ink2)}
+.pull b{color:var(--ink);font-weight:600}
+.next{list-style:none;padding:0;margin:14px auto;max-width:64ch}
+.next li{padding:12px 0 12px 34px;border-bottom:1px solid var(--rule2);position:relative}
+.next li::before{content:counter(n);counter-increment:n;position:absolute;left:0;top:13px;
+  font:600 12px/1 ui-sans-serif,system-ui,sans-serif;color:var(--accent);
+  border:1px solid var(--rule);width:22px;height:22px;display:grid;place-items:center;
+  border-radius:50%}
+.next{counter-reset:n}
+footer{padding:48px 0 78px;font:400 14px/1.7 Spectral,Georgia,serif;color:var(--ink2)}
+footer p{max-width:74ch}
+a{color:var(--accent);text-decoration:none;
+  border-bottom:1px solid rgba(125,43,31,.32)}
+a:hover{border-bottom-color:var(--accent)}
+.leaflet-popup-content-wrapper{background:var(--paper2);color:var(--ink);
+  border-radius:2px;box-shadow:0 2px 14px rgba(0,0,0,.18)}
+.leaflet-popup-tip{background:var(--paper2)}
+.leaflet-popup-content{margin:12px 14px;font:400 13.5px/1.55 Spectral,Georgia,serif}
+.leaflet-popup-content b{font-family:"Cormorant Garamond",Georgia,serif;font-size:17px}
+.leaflet-popup-content dl{margin:7px 0 0;display:grid;
+  grid-template-columns:auto 1fr;gap:3px 12px}
+.leaflet-popup-content dt{font:600 9.5px/1.55 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+.leaflet-popup-content dd{margin:0}
+/* Bar the masthead collapses into once it scrolls away */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:1200;
+  background:rgba(246,242,233,.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--rule);transform:translateY(-101%);
+  transition:transform .34s cubic-bezier(.4,0,.2,1)}
+.topbar.show{transform:none}
+.topbar .inner{max-width:1180px;margin:0 auto;padding:11px 28px;display:flex;
+  align-items:center;justify-content:space-between;gap:20px}
+.topbar .brand{font:600 22px/1 "Cormorant Garamond",Georgia,serif;
+  letter-spacing:-.01em;cursor:pointer;white-space:nowrap}
+.topbar .brand em{font-style:italic;color:var(--accent)}
+.topbar nav{display:flex;gap:22px;flex-wrap:wrap;justify-content:flex-end}
+.topbar nav a{font:600 10px/1.4 ui-sans-serif,system-ui,sans-serif;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink2);border-bottom:0}
+.topbar nav a:hover{color:var(--accent)}
+@media(max-width:640px){.topbar .inner{padding:9px 18px;gap:12px}
+  .topbar .brand{font-size:18px}.topbar nav{gap:12px}
+  .topbar nav a{font-size:9px;letter-spacing:.06em}}
+
+.blend{display:flex;align-items:center;gap:11px;min-width:250px}
+.blend .end{font:600 10px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.12em;
+  text-transform:uppercase;white-space:nowrap;transition:opacity .25s}
+.blend .end.a{color:var(--o4)} .blend .end.b{color:var(--i5)}
+.srcbar{display:flex;flex-wrap:wrap;gap:9px 26px;align-items:flex-start;margin-top:13px;
+  padding-top:12px;border-top:1px solid var(--rule2)}
+.src{display:flex;align-items:flex-start;gap:9px;
+  font:400 13px/1.45 Spectral,Georgia,serif;color:var(--ink2);max-width:46ch}
+.src .sw{width:15px;height:15px;flex:none;margin-top:3px;border:1px solid rgba(0,0,0,.22)}
+.src .sw.dot{border-radius:50%;background:var(--pin);border-color:#fffaf0;
+  box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.src .sw.sq{background:var(--i3);border-color:var(--i5)}
+.src .sw.off{background:transparent;border:1px dashed var(--i3)}
+.src b{display:block;font:600 10px/1.6 ui-sans-serif,system-ui,sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.totop{position:fixed;right:22px;bottom:22px;z-index:1200;width:44px;height:44px;
+  border-radius:50%;border:1px solid var(--rule);background:var(--paper2);
+  color:var(--ink2);cursor:pointer;display:grid;place-items:center;
+  font:400 19px/1 ui-sans-serif,system-ui,sans-serif;opacity:0;pointer-events:none;
+  transition:opacity .3s ease,color .2s,border-color .2s,transform .2s;
+  box-shadow:0 1px 9px rgba(0,0,0,.09)}
+.totop.show{opacity:1;pointer-events:auto}
+.totop:hover{color:var(--accent);border-color:var(--accent);transform:translateY(-2px)}
+
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:1px;
+  margin:10px 0 28px;background:var(--rule2);border:1px solid var(--rule2)}
+.res a{background:var(--paper);padding:14px 16px;border-bottom:0;display:block}
+.res a:hover{background:var(--paper2)}
+.res b{display:block;font:600 17px/1.25 "Cormorant Garamond",Georgia,serif;
+  color:var(--ink);margin-bottom:2px}
+.res span{font:400 12.5px/1.45 Spectral,Georgia,serif;color:var(--ink2)}
+
+/* Counties restyle in place and dots cross-fade, so year and protocol changes
+   glide instead of snapping. */
+#map path{transition:fill .5s ease,fill-opacity .5s ease}
+.leaflet-dots-pane{transition:opacity .3s ease}
+
+@media(max-width:920px){.grid4{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}#map{height:440px}}
+@media(max-width:560px){.grid4{grid-template-columns:1fr}.bar{gap:15px}}
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar"><div class="inner">
+  <div class="brand" id="brand">GLOBE: Ground <em>Truth</em></div>
+  <nav>
+    <a href="https://www.globe.gov/" target="_blank" rel="noopener">GLOBE</a>
+    <a href="https://geoemerge.com/" target="_blank" rel="noopener">UF EMERGE</a>
+    <a href="https://github.com/QuantumRaC/groundtruth-pipeline" target="_blank" rel="noopener">The scripts</a>
+  </nav>
+</div></div>
+<button class="totop" id="totop" aria-label="Back to top">&uarr;</button>
+
+<div class="wrap"><div class="mast">
+  <p class="over">CityCamp Gainesville Hack Day &middot; NASA GLOBE Environmental Data</p>
+  <div class="rule"></div>
+  <h1>GLOBE: Ground <em>Truth</em></h1>
+  <p class="dek">NASA's <a href="https://www.globe.gov/" target="_blank" rel="noopener">GLOBE Observer program</a> asks volunteers and researchers to measure the world
+  around them, and uses what they record to check what satellites and climate models
+  say. Here is how it works, and where the gaps are.</p>
+</div></div>
+
+<div class="stage" id="stage"><div class="wrap">
+  <div class="bar">
+    <div class="field"><span>Protocol
+      <span class="cyc on" id="cyc"><b></b>cycling</span></span>
+      <div class="tabs" id="tabs"></div></div>
+    <div class="field"><span>View</span><div class="modes" id="modes">
+      <button data-m="intensity" aria-selected="true">Intensity</button>
+      <button data-m="values" aria-selected="false">Observations</button>
+    </div></div>
+    <div class="field" style="flex:1;min-width:240px"><span>Year</span>
+      <div class="yearwrap"><span class="yr" id="yrlab">all</span>
+      <input type="range" id="yr" min="0" max="0" value="0" step="1"></div></div>
+    <div class="field" style="flex:1;min-width:250px"><span>Layers</span>
+      <div class="blend">
+        <span class="end a" id="endGlobe">GLOBE</span>
+        <input type="range" id="blend" min="0" max="100" value="0" step="1"
+               aria-label="Fade between the GLOBE observations and the ERA5 field">
+        <span class="end b" id="endEra5">ERA5</span>
+      </div></div>
+  </div>
+  <div id="map"></div>
+  <div class="legend" id="maplegend"></div>
+  <div class="srcbar" id="srcbar"></div>
+  <p class="caption" id="mapcap"></p>
+</div></div>
+
+<section><div class="wrap"><div class="sec-head">
+  <span class="num">I</span><h2>Why a satellite needs a witness</h2>
+</div>
+<div class="body narrow">
+  <p class="drop">A satellite does not see cloud. It sees light, and software turns
+  that light into a number. <a href="https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview" target="_blank" rel="noopener">ERA5</a>, the climate record behind most weather apps, goes
+  further still: it is a computer model that generates estimates every hour, across the
+  globe. It is the most widely used reanalysis dataset in the world &mdash; the baseline
+  for climate research, energy forecasting and countless weather services &mdash; and it
+  reaches back to 1940.</p>
+
+  <p>Estimates have to be checked against something real, and that check is called
+  <i>ground truth</i>. Someone has to be there to construct it. Weather
+  stations do a little of this, but there are few of them and they sit where
+  institutions already are. Most places have none.</p>
+
+  <p>GLOBE's answer is to let anyone be the observer. What makes the result usable as
+  science is the method, not the crowd size: every measurement follows a set
+  procedure, the app records exactly where and when, and photographs go with the
+  reading. A cloud report taken as a satellite passes overhead can be compared with
+  what the satellite said about that same spot.</p>
+
+  <p><b>Which is why these readings are used to check the instruments, rather than the
+  other way round.</b></p>
+</div>
+  <div class="pull">The map above shows four GLOBE measurements across Florida.
+  <b>Intensity</b> shades each county by how many observations it holds.
+  <b>Observations</b> colours each reading by what it actually recorded. Hover on one to see the record a volunteer
+  filed.</div>
+</div></section>
+
+<section id="cloud-section"><div class="wrap"><div class="sec-head">
+  <span class="num">II</span><h2>How close is the model?</h2>
+  <p class="lede">Cloud cover is the one thing here that ERA5 also reports, so it is
+  the one place we can compare satellite data against our surface-based observations.</p>
+</div>
+  <div class="two">
+    <div class="chartbox"><canvas id="cloudChart"></canvas></div>
+    <div class="body"><p id="cloudPara" style="margin:0"></p></div>
+  </div>
+
+  <figure class="figure">
+    <svg viewBox="0 0 860 300" role="img"
+         aria-label="A rain shower covering part of one model grid square">
+      <text class="fig-t" x="0" y="14">One ERA5 square &mdash; about 30 km across</text>
+      <rect x="0" y="28" width="250" height="250" fill="#fbf9f4"
+            stroke="#5a6b95" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <g stroke="#e3dccc" stroke-width=".8">
+        <path d="M62.5 28V278M125 28V278M187.5 28V278M0 90.5H250M0 153H250M0 215.5H250"/>
+      </g>
+      <rect x="125" y="28" width="125" height="125" fill="#5a6b95" opacity=".16"/>
+      <rect x="156" y="59" width="63" height="63" fill="#5a6b95" opacity=".34"/>
+      <g stroke="#5a6b95" stroke-width="1.6" stroke-linecap="round" opacity=".8">
+        <path d="M168 128v16M181 124v20M194 128v16M207 124v20"/>
+      </g>
+      <circle cx="187" cy="90" r="6" fill="#7d2b1f"/>
+      <text class="fig-n" x="199" y="95">soaked</text>
+      <circle cx="62" cy="215" r="6" fill="#7d2b1f"/>
+      <text class="fig-n" x="74" y="220">dry</text>
+      <text class="fig-s" x="0" y="296">Two people, one square, opposite answers.</text>
+
+      <path d="M280 150h56" stroke="#cfc6b4" stroke-width="1.5"/>
+      <path d="M330 144l8 6-8 6" fill="none" stroke="#cfc6b4" stroke-width="1.5"/>
+
+      <text class="fig-t" x="360" y="14">What the model publishes</text>
+      <rect x="360" y="28" width="250" height="250" fill="#5a6b95" opacity=".20"
+            stroke="#5a6b95" stroke-width="1.5"/>
+      <text class="fig-s" x="485" y="142" text-anchor="middle">for the whole square:</text>
+      <text x="485" y="172" text-anchor="middle"
+            style="font:600 21px/1 ui-sans-serif,system-ui,sans-serif;fill:#33436e">
+        light rain</text>
+      <text class="fig-s" x="360" y="296">The average is correct. Neither person is in it.</text>
+
+      <text class="fig-t" x="660" y="14">What a person records</text>
+      <rect x="660" y="28" width="200" height="118" fill="#fbf9f4"
+            stroke="#7d2b1f" stroke-width="1.5"/>
+      <circle cx="684" cy="62" r="5" fill="#7d2b1f"/>
+      <text class="fig-n" x="696" y="67">raining here</text>
+      <text class="fig-s" x="674" y="90">standing water: yes</text>
+      <text class="fig-s" x="674" y="110">muddy ground: yes</text>
+      <text class="fig-s" x="674" y="130">14:20, this exact spot</text>
+      <rect x="660" y="160" width="200" height="118" fill="#fbf9f4"
+            stroke="#7d2b1f" stroke-width="1.5"/>
+      <circle cx="684" cy="194" r="5" fill="#a9502a"/>
+      <text class="fig-n" x="696" y="199">dry here</text>
+      <text class="fig-s" x="674" y="222">standing water: no</text>
+      <text class="fig-s" x="674" y="242">dry ground: yes</text>
+      <text class="fig-s" x="674" y="262">14:20, two km away</text>
+    </svg>
+    <figcaption id="figcap"></figcaption>
+  </figure>
+
+<div class="body narrow">
+  <p>This is determined by resolution; the model is reporting an
+  average over an area bigger than most towns. The closer a question gets to one
+  particular spot, the less an average can tell you &mdash; and a mosquito lives at
+  one particular spot.</p>
+</div>
+</div></section>
+
+<section><div class="wrap"><div class="sec-head">
+  <span class="num">III</span><h2>What no instrument records</h2>
+  <p class="lede">For three of these four measurements, only humans can record them.</p>
+</div>
+  <div class="grid4" id="cards"></div>
+
+<div class="body narrow">
+  <p style="margin-top:30px">"A satellite can't see it" covers three different
+  problems, and it helps to keep them apart.</p>
+
+  <h3 class="sub">One &mdash; too small to show up</h3>
+  <p>Every sensor divides the world into squares and reports one number per square. ERA5
+  uses about 30 km. Landsat manages 30 m, Sentinel&#8209;2 gets to 10 m, and the
+  sharpest commercial cameras reach about 30 cm. Mosquitoes breed in a bucket, an old
+  tyre, a blocked gutter &mdash; smaller than the smallest pixel anyone flies.</p>
+
+  <h3 class="sub">Two &mdash; hidden from above</h3>
+  <p>A satellite can only access the top surface and can't see under a tree, a roof,
+  behind a wall or in the shade &mdash; which is exactly where water can sit. Furthermore, clouds
+  can block ordinary cameras completely. And a satellite passes over roughly twice a day,
+  while a Florida afternoon storm and the puddle it leaves can both come and go in
+  between.</p>
+
+  <h3 class="sub">Three &mdash; light cannot show it at all</h3>
+  <p>Whether there are larvae in the water, which genus they
+  are, how acidic a spring is, whether someone has since tipped the bucket out &mdash;
+  no wavelength can carry that, from any height. A
+  sharper camera does not help when there is no signal to sharpen.</p>
+
+  <p>Where a partial instrument does exist, the catch is instructive. GEDI, a laser
+  aboard the Space Station, really does measure canopy height &mdash; but in scattered
+  spots about 25 m wide, sampling the forest rather than covering it, and blind to the
+  one tree a volunteer can just walk up to.</p>
+
+  <h3 class="sub">Why the smallest measurement matters most</h3>
+  <p>Mosquitoes kill more people than any other animal, and
+  <a href="https://www.who.int/news-room/fact-sheets/detail/dengue-and-severe-dengue" target="_blank" rel="noopener">dengue</a>
+  is spreading fast: 2024 was the worst year ever recorded, with over 14.6 million
+  cases and more than 12,000 deaths across more than 100 countries, and roughly half
+  the world's population now lives where it can spread. Florida is on that map &mdash;
+  the <a href="https://www.cdc.gov/dengue/data-research/facts-stats/index.html" target="_blank" rel="noopener">CDC</a>
+  lists it among the handful of US states with limited local transmission, and
+  <i>Aedes aegypti</i>, the mosquito that carries dengue, breeds in exactly the kind of
+  container these records describe.</p>
+
+  <div class="pull" id="mosqPull"></div>
+</div>
+</div></section>
+
+<section><div class="wrap"><div class="sec-head">
+  <span class="num">IV</span><h2>The blanks still to fill</h2>
+  <p class="lede">Florida has sixty-seven counties. Each map shades the ones where
+  anybody has recorded that measurement at all.</p>
+</div>
+  <div class="grid4" id="minis" style="background:transparent;border:0;gap:18px"></div>
+  <div class="legend" style="justify-content:center">
+    <span><i style="background:var(--i4)"></i>has observations</span>
+    <span><i class="hatch"></i>nobody has looked</span>
+  </div>
+
+<div class="body narrow">
+  <p style="margin-top:34px" id="blanksPara"></p>
+
+  <p>A blank county definitely doesn't signal no mosquitoes or trees, but means that in this county
+  nobody has logged any observations. This map shows exactly where one more
+  person with a phone would add the most.</p>
+
+  <h3 class="sub">One note before you start</h3>
+  <p>Do not go looking by record count. Four distinct Florida measurements were noticed while
+  making this page: </p>
+  <div class="tscroll" style="margin-top:16px"><table id="exclTable"></table></div>
+  <div class="pull" style="margin-left:0"><b>A big number of records can mean one
+  machine, or one very dedicated person.</b> Count how many different people
+  contributed before you count rows.</div>
+
+  <h3 class="sub">What would make the most difference</h3>
+  <ol class="next">
+    <li><b>Observers in the blank counties.</b> This is the most effective fix on this page. You
+      would only need a phone and the <a href="https://observer.globe.gov/about/get-the-app" target="_blank" rel="noopener">GLOBE Observer app</a>.</li>
+    <li><b>More of the measurements only you can make.</b> Mosquito habitat has
+      the fewest people behind it and the most direct link to human health.</li>
+    <li><b>The same page, somewhere it matters more.</b> The more data available, the more insights we can gain.</li>
+  </ol>
+</div>
+</div></section>
+
+<section><div class="wrap"><div class="sec-head">
+  <span class="num">V</span><h2>Learn more</h2>
+  <p class="lede">Want to work with the GLOBE dataset yourself?</p>
+</div>
+<div class="body narrow">
+  <h3 class="sub">UF EMERGE</h3>
+  <p><a href="https://geoemerge.com/" target="_blank" rel="noopener">EMERGE</a> is a
+  NASA-funded program at the University of Florida that teaches anyone &mdash;
+  students, teachers, anyone curious &mdash; to work with participatory science and
+  satellite data. Its two open textbooks start at "what is citizen science" and go
+  through mapping, satellite indices and risk modelling, using GLOBE's own datasets
+  the whole way. Both are free, and published in English and Spanish.</p>
+
+  <h3 class="sub">UF GeoDI Lab</h3>
+  <p>The lab behind EMERGE is
+  <a href="https://geodi.geog.ufl.edu/" target="_blank" rel="noopener">GeoDI</a>, the
+  Geospatial Digital Informatics Lab in UF's Department of Geography, directed by
+  Dr. Di Yang. It combines satellite observation, geospatial AI and community-collected
+  data on environmental and public-health questions.</p>
+
+  <p>It is currently running the project this page argues for. From 2025 to 2027,
+  under NASA funding with Dr. Yang as the lead researcher: <b><a href="https://geodi.geog.ufl.edu/research/" target="_blank" rel="noopener">Forecasting Mosquito-Borne Disease Risk in
+  a Changing Climate: Integrating GLOBE Citizen Science and NASA Earth System
+  Modeling.</a></b></p>
+</div>
+</div></section>
+
+<footer><div class="wrap">
+  <p><b>Resources.</b></p>
+  <div class="res">
+    <a href="https://www.globe.gov/" target="_blank" rel="noopener">
+      <b>NASA GLOBE</b><span>The program itself, and how to start observing</span></a>
+    <a href="https://geoemerge.com/" target="_blank" rel="noopener">
+      <b>UF EMERGE</b><span>Open curricula on participatory science and mosquito-borne disease</span></a>
+    <a href="https://geodi.geog.ufl.edu/" target="_blank" rel="noopener">
+      <b>UF GeoDI Lab</b><span>The Geospatial Digital Informatics lab behind EMERGE</span></a>
+    <a href="https://github.com/QuantumRaC/groundtruth-pipeline" target="_blank" rel="noopener">
+      <b>The scripts</b><span>The pipeline that gathered every number on this page</span></a>
+  </div>
+  <p><b>Curriculum.</b> Follows EMERGE Textbook 1: Data Analysis &mdash; Ch.3 L1
+  <i>Our Eyes in the Sky &amp; On the Ground</i>, Ch.2 L3 <i>Map GLOBE Citizen
+  Science Data</i>, Ch.4 L5 <i>County-Level Analysis</i>.
+  <a href="https://geo-di-lab.github.io/emerge-lessons/" target="_blank" rel="noopener">emerge-lessons</a></p>
+  <p><b>Data.</b> <a href="https://observer.globe.gov/" target="_blank" rel="noopener">NASA GLOBE Observer</a> &middot;
+  ERA5 (Copernicus / ECMWF) via <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>
+  &middot; county boundaries from the US Census Bureau &middot; built with
+  <a href="https://github.com/geo-di-lab/geoemerge" target="_blank" rel="noopener">geoemerge</a>, GeoPandas,
+  Leaflet and Chart.js.</p>
+  <p id="prov"></p>
+</div></footer>
+
+<script>
+const P=["sky_conditions","tree_heights","land_covers","mosquito_habitat_mapper"];
+const LABEL={sky_conditions:"Sky conditions",tree_heights:"Tree heights",
+  land_covers:"Land cover",mosquito_habitat_mapper:"Mosquito habitat"};
+const WHAT={sky_conditions:"Cloud, contrails and haze. Only cloud has an ERA5 match.",
+  tree_heights:"How tall a tree is, measured from the ground.",
+  land_covers:"A survey of the ground surface — here, whether the spot is dry, muddy, or holding standing water.",
+  mosquito_habitat_mapper:"What the water was in, and whether larvae were in it."};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const I_RAMP=["--i1","--i2","--i3","--i4","--i5"].map(css);
+const O_RAMP=["--o1","--o2","--o3","--o4","--o5"].map(css);
+const NODATA=css("--nodata"), ACCENT=css("--accent"), PIN=css("--pin");
+const j=p=>fetch(p).then(r=>r.json());
+
+const VALUE={
+  sky_conditions:{field:"cloud cover",
+    classes:[["none","no cloud",O_RAMP[0]],["clear","clear",O_RAMP[0]],
+      ["isolated","isolated",O_RAMP[1]],["scattered","scattered",O_RAMP[2]],
+      ["broken","broken",O_RAMP[3]],["overcast","overcast",O_RAMP[4]],
+      ["obscured","obscured","#6b625a"]],
+    of:d=>d.CloudCover||null},
+  tree_heights:{field:"tree height",
+    classes:[["a","under 5 m",O_RAMP[0]],["b","5–10 m",O_RAMP[1]],
+      ["c","10–15 m",O_RAMP[2]],["d","15–25 m",O_RAMP[3]],["e","over 25 m",O_RAMP[4]]],
+    of:d=>{const h=d.TreeHeightAvgM; if(h==null) return null;
+      return h<5?"a":h<10?"b":h<15?"c":h<25?"d":"e";}},
+  land_covers:{field:"ground condition",
+    classes:[["dry","dry ground",O_RAMP[0]],["muddy","muddy",O_RAMP[2]],
+      ["water","standing water",O_RAMP[4]]],
+    of:d=>d.StandingWater?"water":d.Muddy?"muddy":d.DryGround?"dry":null},
+  mosquito_habitat_mapper:{field:"water source",
+    classes:[["container: artificial","artificial container",O_RAMP[4]],
+      ["container: natural","natural container",O_RAMP[3]],
+      ["still: lake/pond/swamp","still water",O_RAMP[1]],
+      ["flowing: still water found next to river or stream","beside flowing water",O_RAMP[0]]],
+    of:d=>d.WaterSourceType||null}
+};
+
+let SUM,OBS,GEO,PTS={},active=P[0],year="all",mode="intensity",map,layer,dots;
+let dotRenderer,dotTimer,years=[],GRID=null,gridLayer,gridRenderer,blend=0;
+// Which ERA5 variable, if any, corresponds to each GLOBE measurement.
+const ERA5_VAR={sky_conditions:["cloud","cloud cover","%"],
+  land_covers:["soil","soil moisture","m\u00b3/m\u00b3"],
+  tree_heights:null, mosquito_habitat_mapper:null};
+
+function bins(vals){
+  const v=[...vals].filter(x=>x>0).sort((a,b)=>a-b); if(!v.length) return [];
+  const c=[]; for(let i=1;i<=5;i++){
+    const q=v[Math.min(v.length-1,Math.floor(v.length*i/5))];
+    if(!c.includes(q)) c.push(q);} return c;
+}
+const shade=(n,cuts)=>{ if(!n) return NODATA;
+  for(let i=0;i<cuts.length;i++) if(n<=cuts[i]) return I_RAMP[i];
+  return I_RAMP[I_RAMP.length-1]; };
+const countFor=(f,p,y)=>y==="all"?(f.properties[p]||0)
+  :((f.properties[p+"_by_year"]||{})[y]||0);
+const colorOf=(p,d)=>{const v=VALUE[p],k=v.of(d);
+  const hit=v.classes.find(c=>c[0]===k); return hit?hit[2]:"#9b938a";};
+
+function popup(p,d){
+  const rows=Object.entries(d)
+    .filter(([k])=>!["lat","lon","date","site","user","fips"].includes(k))
+    .map(([k,v])=>`<dt>${k.replace(/([A-Z])/g," $1").trim().toLowerCase()}</dt>
+      <dd>${v===true?"yes":v===false?"no":v}</dd>`).join("");
+  return `<b>${LABEL[p]}</b><br><span style="font-size:13px;color:#5a5148">${d.date}
+    </span><dl>${rows}</dl>`;
+}
+
+/* Detail appears after resting on a point, not on a click. */
+const DWELL=500;
+function onHover(lyr){
+  let t=null;
+  lyr.on("mouseover",()=>{clearTimeout(t); t=setTimeout(()=>lyr.openPopup(),DWELL);});
+  lyr.on("mouseout",()=>{clearTimeout(t); lyr.closePopup();});
+}
+
+function drawGrid(){
+  if(!GRID) return;
+  const spec=ERA5_VAR[active], key=spec&&spec[0], half=GRID.cell_deg/2;
+  const val=c=>{const b=c[year]||c.all; return (b&&key)?b[key]:null;};
+  const vals=GRID.cells.map(val).filter(v=>v!==null&&v!==undefined);
+  const lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals);
+  const col=v=>{ if(v===null||v===undefined) return null;
+    const t=hi>lo?(v-lo)/(hi-lo):0.5;
+    return I_RAMP[Math.min(I_RAMP.length-1,Math.floor(t*I_RAMP.length))]; };
+
+  if(gridLayer) gridLayer.remove();
+  gridLayer=L.featureGroup(GRID.cells.map(c=>{
+    const v=val(c), fill=col(v), b=c[year]||c.all;
+    const r=L.rectangle([[c.lat-half,c.lon-half],[c.lat+half,c.lon+half]],{
+      renderer:gridRenderer, color:fill?"#33436e":"#8695b7", weight:.6,
+      dashArray:fill?null:"3 3", fill:!!fill,
+      fillColor:fill||"#8695b7", fillOpacity:fill?.75:0});
+    r.bindPopup("<b>One ERA5 square</b><br><span style='font-size:13px;color:#5a5148'>"
+      +"0.25&deg; &mdash; about 30 km across</span><dl>"
+      +(spec
+        ? "<dt>"+spec[1]+"</dt><dd>"+((v===null||v===undefined)?"&mdash;":v+" "+spec[2])+"</dd>"
+        : "<dt>"+LABEL[active].toLowerCase()+"</dt><dd>no ERA5 variable exists</dd>")
+      +"<dt>observations inside</dt><dd>"+(b?b.n:0)+"</dd></dl>");
+    onHover(r); return r;})).addTo(map);
+  applyBlend();
+}
+
+function applyBlend(){
+  const t=blend/100;
+  const gp=map.getPane("era5"), dp=map.getPane("dots");
+  if(gp) gp.style.opacity=t;
+  // The dots never disappear: the point is to hold both in view at once.
+  if(dp) dp.style.opacity=1-0.6*t;
+  const eg=document.getElementById("endGlobe"), ee=document.getElementById("endEra5");
+  if(eg) eg.style.opacity=(1-0.55*t).toFixed(2);
+  if(ee) ee.style.opacity=(0.45+0.55*t).toFixed(2);
+}
+
+function sources(){
+  const spec=ERA5_VAR[active];
+  const n=(PTS[active]||[]).filter(d=>year==="all"||d.date.slice(0,4)===year).length;
+  document.getElementById("srcbar").innerHTML=
+    "<div class='src'><i class='sw dot'></i><div><b>NASA GLOBE Observer</b>"
+    +"Measured on the ground by volunteers. Every dot is one person, one place, one "
+    +"moment &mdash; "+n.toLocaleString()+" of them here.</div></div>"
+    +"<div class='src'><i class='sw "+(spec?"sq":"off")+"'></i><div><b>ERA5 reanalysis</b>"
+    +(spec
+      ? "Modelled by computer, one value for every 0.25&deg; square &mdash; about 30 km "
+        +"across. Drawn here as "+spec[1]+", averaged over the hours somebody was "
+        +"observing inside that square."
+      : "ERA5 holds no variable for "+LABEL[active].toLowerCase()+". The squares are "
+        +"drawn empty because there is nothing to put in them.")
+    +"</div></div>";
+}
+
+function draw(){
+  const valueMode=mode==="values";
+  const cuts=bins(GEO.features.map(f=>countFor(f,active,year)));
+  const styleFor=f=>valueMode
+    ? {fillColor:"#efe9dc",weight:.8,color:"#b9ad95",fillOpacity:.55}
+    : {fillColor:shade(countFor(f,active,year),cuts),weight:.8,
+       color:"#fbf9f4",fillOpacity:.95};
+
+  // Built once, then restyled in place -- a fresh layer every time would give the
+  // CSS nothing to animate between, which is what made year changes feel stiff.
+  if(!layer){
+    layer=L.geoJSON(GEO,{style:styleFor,onEachFeature:(f,l)=>onHover(l)}).addTo(map);
+  }else{
+    layer.setStyle(styleFor);
+  }
+  layer.eachLayer(l=>{
+    if(valueMode){ l.unbindPopup(); return; }
+    const f=l.feature, n=countFor(f,active,year);
+    l.bindPopup(`<b>${f.properties.name||f.properties.fips}</b><br>
+      ${LABEL[active]}: ${n?n+" observation"+(n>1?"s":""):"<i>nobody has looked</i>"}
+      ${year==="all"?"":" in "+year}`);
+  });
+
+  const pts=(PTS[active]||[]).filter(d=>year==="all"||d.date.slice(0,4)===year);
+  const show=pts.slice(0,6000);
+  const pane=map.getPane("dots");
+  pane.style.opacity=0;
+  if(map.getPane("era5")) map.getPane("era5").style.opacity=0;
+  clearTimeout(dotTimer);
+  dotTimer=setTimeout(()=>{
+    if(dots) dots.remove();
+    // Same marker in both views -- only the fill changes -- and no stroke.
+    dots=L.featureGroup(show.map(d=>{
+      // A hairline in near-white separates the dot from whatever is under it;
+      // without it the gold sat too close to the blue counties.
+      const m=L.circleMarker([d.lat,d.lon],{renderer:dotRenderer,radius:2.4,
+        color:"#fffaf0",weight:.7,opacity:.95,
+        fillColor:valueMode?colorOf(active,d):PIN,
+        fillOpacity:valueMode?.95:.9});
+      m.bindPopup(popup(active,d)); onHover(m); return m;})).addTo(map);
+    applyBlend();
+  },170);
+
+  drawGrid(); sources();
+
+  const V=VALUE[active];
+  document.getElementById("maplegend").innerHTML=valueMode
+    ? V.classes.map(c=>`<span><i class="dot" style="background:${c[2]}"></i>${c[1]}</span>`)
+        .join("")+`<span><i class="dot" style="background:#9b938a"></i>not recorded</span>`
+        +`<span>n = ${show.length.toLocaleString()}</span>`
+    : `<span><i class="hatch"></i>nobody has looked</span>`+
+      cuts.map((c,i)=>`<span><i style="background:${I_RAMP[i]}"></i>&le;${c}</span>`).join("")+
+      `<span><i class="dot" style="background:${PIN}"></i>each observation</span>`+
+      `<span>n = ${pts.length.toLocaleString()}</span>`;
+
+  document.getElementById("mapcap").textContent=valueMode
+    ? `Each dot coloured by its ${V.field}. Rest on one to see the full record.`
+      +(pts.length>6000?` Showing the first 6,000 of ${pts.length.toLocaleString()}.`:"")
+    : `Counties shaded by how many observations they hold. Unshaded counties have none.`;
+}
+
+/* ---- auto-cycle: runs on load, pauses while the map area is in use ---- */
+let autoT=null, idleT=null;
+const cyc=()=>document.getElementById("cyc");
+function setActive(p){
+  active=p;
+  document.querySelectorAll("#tabs button").forEach(o=>
+    o.setAttribute("aria-selected",o.dataset.p===active));
+  draw();
+}
+function startAuto(){ if(autoT) return; cyc().classList.add("on");
+  autoT=setInterval(()=>setActive(P[(P.indexOf(active)+1)%P.length]),4500); }
+function stopAuto(){ clearInterval(autoT); autoT=null; cyc().classList.remove("on"); }
+function nudge(){ stopAuto(); clearTimeout(idleT); idleT=setTimeout(startAuto,15000); }
+
+function controls(){
+  document.getElementById("tabs").innerHTML=P.map(p=>
+    `<button data-p="${p}" aria-selected="${p===active}">${LABEL[p]}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach(b=>
+    b.onclick=()=>setActive(b.dataset.p));
+  document.querySelectorAll("#modes button").forEach(b=>b.onclick=()=>{
+    mode=b.dataset.m;
+    document.querySelectorAll("#modes button").forEach(o=>
+      o.setAttribute("aria-selected",o.dataset.m===mode));
+    draw();});
+  const s=new Set(); P.forEach(p=>Object.keys(SUM[p].per_year).forEach(y=>s.add(y)));
+  years=["all",...[...s].sort()];
+  const sl=document.getElementById("yr");
+  // A fine step lets the handle glide; the map only redraws when the year changes.
+  sl.max=years.length-1; sl.step=0.01; sl.value=0;
+  sl.oninput=()=>{
+    const y=years[Math.round(+sl.value)];
+    if(y===year) return;
+    year=y; document.getElementById("yrlab").textContent=year; draw();};
+  sl.onchange=()=>{sl.value=Math.round(+sl.value);};
+  const bar=document.getElementById("topbar"), top=document.getElementById("totop");
+  const mast=document.querySelector(".mast");
+  const onScroll=()=>{
+    // Collapse once the masthead itself has scrolled away, not at some fixed
+    // fraction of the window -- that fires too early on a short viewport.
+    bar.classList.toggle("show",scrollY>mast.offsetTop+mast.offsetHeight-12);
+    top.classList.toggle("show",scrollY>innerHeight);
+  };
+  addEventListener("scroll",onScroll,{passive:true}); onScroll();
+  const toTop=()=>scrollTo({top:0,behavior:"smooth"});
+  top.onclick=toTop; document.getElementById("brand").onclick=toTop;
+
+  const bl=document.getElementById("blend");
+  bl.oninput=()=>{blend=+bl.value; applyBlend();};
+
+  const stage=document.getElementById("stage");
+  ["pointerdown","pointermove","wheel","input","focusin"].forEach(e=>
+    stage.addEventListener(e,nudge,{passive:true}));
+}
+
+function cards(){
+  document.getElementById("cards").innerHTML=OBS.gradient.map(g=>{
+    const s=SUM[g.protocol];
+    return `<div class="card">
+      <span class="tag t-${g.satellite_visibility}">${
+        g.satellite_visibility==="direct"?"Included in ERA5":
+        g.satellite_visibility==="analogy"?"Roughly Included in ERA5":"Not Included in ERA5"}</span>
+      <h3>${LABEL[g.protocol]}</h3>
+      <div class="big">${g.observers}</div><div class="unit">people</div>
+      <div class="cap">${g.records.toLocaleString()} records ·
+        ${s.counties_with_data}/67 counties<br>${WHAT[g.protocol]}</div></div>`;}).join("");
+}
+
+function minis(){
+  const b=[-87.7,24.4,-79.9,31.1],W=260,H=W*(b[3]-b[1])/(b[2]-b[0])*0.78;
+  const x=l=>(l-b[0])/(b[2]-b[0])*W,y=l=>H-(l-b[1])/(b[3]-b[1])*H;
+  const path=g=>{const rings=g.type==="Polygon"?g.coordinates:g.coordinates.flat();
+    return rings.map(r=>"M"+r.map(c=>x(c[0]).toFixed(1)+","+y(c[1]).toFixed(1))
+      .join("L")+"Z").join("");};
+  document.getElementById("minis").innerHTML=P.map(p=>`<div>
+    <svg class="mini" viewBox="0 0 ${W} ${H}">
+    <defs><pattern id="h${p}" width="6" height="6" patternTransform="rotate(45)"
+      patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="#eee7d8"/>
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#d8cfbc" stroke-width="3"/></pattern></defs>
+    ${GEO.features.map(f=>`<path d="${path(f.geometry)}"
+      fill="${(f.properties[p]||0)>0?"var(--i4)":`url(#h${p})`}"
+      stroke="#f6f2e9" stroke-width=".6"/>`).join("")}</svg>
+    <div class="mini-lab"><b>${SUM[p].counties_with_data}</b>&thinsp;/&thinsp;67
+      <span>${LABEL[p]}</span></div></div>`).join("");
+  const g=OBS.gradient;
+  document.getElementById("blanksPara").innerHTML=
+    `A pattern persists: sky reports reach
+     ${SUM[P[0]].counties_with_data} counties; mosquito habitat reaches
+     ${SUM[P[3]].counties_with_data}. The number of people behind each one falls in
+     step &mdash; <b>${g.map(x=>x.observers).join(", ")}</b> &mdash; and so does the
+     map. <b>The measurements a satellite cannot make are the ones fewest people are
+     making.</b>`;
+}
+
+function cloud(cc){
+  const order=["none","clear","isolated","scattered","broken","overcast"];
+  const MID={none:0,clear:5,isolated:17.5,scattered:37.5,broken:70,overcast:95};
+  const ks=order.filter(k=>cc.by_category[k]);
+  new Chart(document.getElementById("cloudChart"),{type:"bar",
+    data:{labels:ks,datasets:[
+      {label:"what people saw",data:ks.map(k=>MID[k]),backgroundColor:"#a9502a"},
+      {label:"what ERA5 said",data:ks.map(k=>cc.by_category[k].era5_mean),
+       backgroundColor:"#8695b7"}]},
+    options:{maintainAspectRatio:false,
+      plugins:{legend:{position:"top",labels:{color:"#5a5148",boxWidth:12,
+        font:{family:"Spectral,Georgia,serif",size:12}}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y}% cloud`}}},
+      scales:{x:{ticks:{color:"#5a5148",font:{family:"Spectral,Georgia,serif"}},
+          grid:{display:false}},
+        y:{min:0,max:100,ticks:{color:"#5a5148",callback:v=>v+"%"},
+          grid:{color:"#e3dccc"},
+          title:{display:true,text:"cloud cover",color:"#5a5148"}}}}});
+  const xs=cc.pairs.map(p=>p.g),ys=cc.pairs.map(p=>p.e);
+  let ad=0; xs.forEach((v,i)=>ad+=Math.abs(v-ys[i]));
+  document.getElementById("cloudPara").innerHTML=
+    `Across <b>${cc.pairs.length.toLocaleString()}</b> Florida sky reports, matched to
+     ERA5 at the same place and hour, the two move together but rarely agree &mdash;
+     they differ by <b>${(ad/xs.length).toFixed(0)} points</b> on average. Look at the
+     ends: when people see an empty sky ERA5 still finds cloud, and when people see a
+     solid grey lid ERA5 lightens it. The model pulls everything toward the middle,
+     because it is describing a whole region at once.`;
+}
+
+function excluded(){
+  document.getElementById("exclTable").innerHTML=
+    `<tr><th>Measurement</th><th class="num">records</th>
+     <th class="num">but how many<br>people or machines</th><th>what it really was</th></tr>`+
+    OBS.excluded.map(e=>`<tr><td>${e.protocol}</td>
+      <td class="num">${e.records.toLocaleString()}</td>
+      <td class="num">${e.sites??e.observers}</td><td>${e.note}</td></tr>`).join("");
+}
+
+Promise.all([j("data/summary.json"),j("data/observers.json"),j("data/counties.geojson")])
+.then(([s,o,g])=>{
+  SUM=s;OBS=o;GEO=g; cards();minis();excluded();
+  map=L.map("map",{scrollWheelZoom:false}).setView([28.2,-82.6],6);
+  // Esri's light canvas needs no API key; CARTO's tiles now do.
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/"+
+    "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    {attribution:"Esri, HERE, Garmin, &copy; OpenStreetMap contributors",
+     maxZoom:12}).addTo(map);
+  // Dots live in their own pane so the whole set can cross-fade on a change.
+  // ERA5 squares sit above the counties and below the observations.
+  map.createPane("era5"); map.getPane("era5").style.zIndex=550;
+  gridRenderer=L.svg({pane:"era5"});
+  map.createPane("dots"); map.getPane("dots").style.zIndex=650;
+  dotRenderer=L.svg({pane:"dots"});
+  controls();
+  // Leaflet injects its attribution links after the fact; catch those too so
+  // nothing navigates away from the page.
+  new MutationObserver(()=>document.querySelectorAll('a[href^="http"]:not([target])')
+    .forEach(a=>{a.target="_blank";a.rel="noopener";}))
+    .observe(document.body,{childList:true,subtree:true});
+  document.querySelectorAll('a[href^="http"]:not([target])')
+    .forEach(a=>{a.target="_blank";a.rel="noopener";});
+  return Promise.all([j("data/era5_grid.json").then(g=>GRID=g).catch(()=>null),
+    ...P.map(p=>j(`data/points_${p}.json`).then(d=>PTS[p]=d))]);
+}).then(()=>{
+  draw(); startAuto();
+  const m=PTS.mosquito_habitat_mapper||[];
+  const art=m.filter(d=>d.WaterSourceType==="container: artificial").length;
+  const el=m.filter(d=>d.BreedingGroundEliminated===true).length;
+  document.getElementById("mosqPull").innerHTML=
+    `<b>Mosquito habitat hits all three limits at once.</b> Of ${m.length} Florida
+     records, ${art} (${(100*art/m.length).toFixed(0)}%) were water sitting in
+     something artificial &mdash; a container too small to see, usually hidden from
+     above, holding larvae that no camera could detect anyway. In
+     ${el} cases (${(100*el/m.length).toFixed(0)}%) the observer tipped it out on the
+     spot, which is something no satellite could have done either.`;
+  document.getElementById("prov").innerHTML="<b>Provenance.</b> Downloaded from the "+
+    "GLOBE API on 20 September 2026. Records landing outside Florida's county "+
+    "boundaries, kept in the source files but left out of county totals: "+
+    Object.entries(SUM).map(([k,v])=>`${k} ${v.outside_area}`).join(", ")+".";
+  return j("data/cloud_compare.json");
+}).then(cc=>{ if(cc&&cc.pairs&&cc.pairs.length) cloud(cc);
+  else document.getElementById("cloud-section").remove();
+}).catch(()=>{const s=document.getElementById("cloud-section"); if(s) s.remove();});
+
+fetch("data/era5_agreement.json").then(r=>r.ok?r.json():null).then(a=>{
+  if(!a) return;
+  document.getElementById("figcap").innerHTML=
+    `On <b>${a.rain.era5_wet_observer_dry.toLocaleString()}</b>
+     occasions ERA5 recorded rain in the hour while the person standing there reported
+     dry ground and no rain.`;
+}).catch(()=>{});
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "rain": {
+    "n": 13883,
+    "agreement": 81.0,
+    "era5_wet_observer_dry": 2418,
+    "era5_dry_observer_raining": 223,
+    "both_wet": 389,
+    "both_dry": 10853
+  },
+  "soil": {
+    "muddy_false": 0.1524,
+    "water_false": 0.1536,
+    "dry_true": 0.1499,
+    "dry_false": 0.1663,
+    "muddy_true": 0.1788,
+    "water_true": 0.1602
+  },
+  "soil_n": {
+    "muddy_false": 12931,
+    "water_false": 12601,
+    "dry_true": 10210,
+    "dry_false": 3673,
+    "muddy_true": 952,
+    "water_true": 1282
+  }
+}

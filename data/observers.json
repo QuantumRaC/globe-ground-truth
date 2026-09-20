@@ -1,0 +1,68 @@
+{
+  "gradient": [
+    {
+      "protocol": "sky_conditions",
+      "records": 11273,
+      "sites": 1816,
+      "observers": 860,
+      "top_observer_share": 4.5,
+      "satellite_visibility": "direct",
+      "satellite_note": "ERA5 cloud_cover, same hour"
+    },
+    {
+      "protocol": "tree_heights",
+      "records": 1813,
+      "sites": 724,
+      "observers": 314,
+      "top_observer_share": 12.5,
+      "satellite_visibility": "none",
+      "satellite_note": "no canopy variable in ERA5"
+    },
+    {
+      "protocol": "land_covers",
+      "records": 808,
+      "sites": 709,
+      "observers": 148,
+      "top_observer_share": 6.4,
+      "satellite_visibility": "analogy",
+      "satellite_note": "ERA5 models soil moisture, never observes a puddle"
+    },
+    {
+      "protocol": "mosquito_habitat_mapper",
+      "records": 634,
+      "sites": 277,
+      "observers": 73,
+      "top_observer_share": 17.4,
+      "satellite_visibility": "none",
+      "satellite_note": "invisible to remote sensing"
+    }
+  ],
+  "excluded": [
+    {
+      "protocol": "air_temps",
+      "records": 961234,
+      "sites": 7,
+      "note": "automated weather stations; no field distinguishes them from people"
+    },
+    {
+      "protocol": "precipitations",
+      "records": 9245,
+      "sites": 4,
+      "note": "automated"
+    },
+    {
+      "protocol": "dissolved_oxygens",
+      "records": 1721,
+      "observers": 8,
+      "top_observer_share": 97.0,
+      "note": "one person contributed 97% -- a community of one"
+    },
+    {
+      "protocol": "hydrology_phs",
+      "records": 2309,
+      "observers": 13,
+      "top_observer_share": 72.0,
+      "note": "one person contributed 72%"
+    }
+  ]
+}
